@@ -13,7 +13,7 @@ public class MessageScheduler {
     private final MessagePublisher messagePublisher;
     private final AtomicInteger counter = new AtomicInteger(1);
 
-    @Scheduled(fixedRate = 100)
+//    @Scheduled(fixedRate = 100)
     public void sendMessage() {
         String message = "Hello, RabbitMQ! Message number: " + counter.getAndIncrement();
         messagePublisher.publishMessage(message);
