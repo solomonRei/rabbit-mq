@@ -14,22 +14,32 @@ services:
       RABBITMQ_ERLANG_COOKIE: 'secretcookie'
       RABBITMQ_NODENAME: 'rabbit@rabbitmq1'
       RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: '-rabbitmq_management load_definitions "/etc/rabbitmq/definitions.json"'
+      RABBITMQ_PROMETHEUS_RETURNS_PER_OBJECT_METRICS: "true"
     volumes:
       - rabbitmq1-data:/var/lib/rabbitmq
       - ./definitions.json:/etc/rabbitmq/definitions.json
       - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
       - ./enabled_plugins:/etc/rabbitmq/enabled_plugins
+    command: >
+      sh -c "rabbitmq-server &
+      sleep 10 &&
+      rabbitmqctl set_policy ha-all '^.*$' '{\"ha-mode\":\"all\",\"ha-sync-mode\":\"automatic\"}' --apply-to queues &&
+      tail -f /dev/null"
 
   rabbitmq2:
     image: rabbitmq:3-management
     hostname: rabbitmq2
     container_name: rabbitmq2
+    ports:
+      - "15673:15672"
+      - "5673:5672"
     networks:
       - rabbitmq-cluster
     environment:
       RABBITMQ_ERLANG_COOKIE: 'secretcookie'
       RABBITMQ_NODENAME: 'rabbit@rabbitmq2'
       RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: '-rabbitmq_management load_definitions "/etc/rabbitmq/definitions.json"'
+      RABBITMQ_PROMETHEUS_RETURNS_PER_OBJECT_METRICS: "true"
     volumes:
       - rabbitmq2-data:/var/lib/rabbitmq
       - ./definitions.json:/etc/rabbitmq/definitions.json
@@ -40,17 +50,41 @@ services:
     image: rabbitmq:3-management
     hostname: rabbitmq3
     container_name: rabbitmq3
+    ports:
+      - "15674:15672"
+      - "5674:5672"
     networks:
       - rabbitmq-cluster
     environment:
       RABBITMQ_ERLANG_COOKIE: 'secretcookie'
       RABBITMQ_NODENAME: 'rabbit@rabbitmq3'
       RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: '-rabbitmq_management load_definitions "/etc/rabbitmq/definitions.json"'
+      RABBITMQ_PROMETHEUS_RETURNS_PER_OBJECT_METRICS: "true"
     volumes:
       - rabbitmq3-data:/var/lib/rabbitmq
       - ./definitions.json:/etc/rabbitmq/definitions.json
       - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
       - ./enabled_plugins:/etc/rabbitmq/enabled_plugins
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - rabbitmq-cluster
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - rabbitmq-cluster
+    volumes:
+      - grafana-data:/var/lib/grafana
 
 networks:
   rabbitmq-cluster:
@@ -60,3 +94,4 @@ volumes:
   rabbitmq1-data:
   rabbitmq2-data:
   rabbitmq3-data:
+  grafana-data:
